@@ -1,3 +1,7 @@
+# ANA LUISA RODRIGUES
+# ANA CLARA OGATA
+# RENNAN GABRIEL BRITTO
+
 import numpy as np
 import random as r
 import heapq
@@ -227,7 +231,7 @@ class WumpusWorldEnv:
                 break
 
         # ========================================================
-        # 🔥 VOLTA COM A*
+        #  VOLTA COM A*
         # ========================================================
         if self.has_gold:
             path_back = self._find_path(self.player_pos, (3,0))
