@@ -113,22 +113,34 @@ class MundoWumpus:
 SYSTEM_PROMPT = """
 Você é um agente do Mundo de Wumpus.
 
-Você pode usar ferramentas:
+Ações permitidas:
+1) andar
+2) atirar
+3) pegar_ouro
+4) escalar_saida
 
-andar(direcao)
-atirar(direcao)
-pegar_ouro()
-escalar_saida()
+Direções permitidas:
+"N", "S", "L", "O"
 
-Sensores:
-FEDOR = Wumpus perto
-BRISA = abismo perto
-BRILHO = ouro aqui
+Formato obrigatório:
 
-Responda SEMPRE:
+{
+  "action": "andar",
+  "action_input": {
+    "direcao": "S"
+  }
+}
 
-Thought: ...
-Action: { "action": "...", "action_input": {...} }
+Regras:
+- O objetivo do usuário é a prioridade máxima. Não aja aleatoriamente.
+- Antes de escolher uma ação, considere: objetivo, posição atual, sensores e histórico recente.
+- Atire apenas se FEDOR nos sensores.
+- Se houver BRILHO, a próxima ação deve ser pegar_ouro.
+- Se estiver com ouro e estiver em (1,1), a próxima ação deve ser escalar_saida.
+- Se uma direção deu Parede, não tente essa mesma direção de novo na mesma posição.
+- Evite andar para casas desconhecidas quando houver BRISA ou FEDOR, a menos que seja necessário. Utilize o histórico para se locomover.
+- Você tem apenas 1 flecha, ou seja, pode atirar apenas uma vez.
+- Quando você atira uma flecha na direção do Wumpus você machuca e mata o Wumpus.
 """
 
 
@@ -140,10 +152,22 @@ class Agente:
     def extrair(self, texto):
         m = re.search(r'\{[\s\S]*\}', texto)
         if m:
-            return json.loads(m.group())
+            json_str = m.group()
+
+            # corrige aspas simples
+            json_str = json_str.replace("'", '"')
+
+            try:
+                return json.loads(json_str)
+            except json.JSONDecodeError:
+                print("Erro ao interpretar:", json_str)
+                return None
+
         return None
 
     def executar(self, mundo, objetivo):
+
+        historico = []
 
         for i in range(20):
 
@@ -156,6 +180,7 @@ Pos: {mundo.posicao_jogador}
 Sensores: {mundo.sensores()}
 Ouro: {mundo.ouro}
 Flecha: {mundo.flecha}
+Historico recente: {historico[-5:]}
 """
 
             prompt = f"""
@@ -166,7 +191,7 @@ Estado:
 """
 
             resp = self.client.chat.completions.create(
-                model="mixtral-8x7b-32768",
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {"role": "user", "content": prompt}
@@ -183,14 +208,35 @@ Estado:
             nome = acao["action"]
             inp = acao.get("action_input", {})
 
+            resultado = ""
+
             if nome == "andar":
-                print(mundo.andar(inp.get("direcao", "N")))
+                d = inp.get("direcao", "N")
+                d = d if d in ["N", "S", "L", "O"] else "N"
+                resultado = mundo.andar(d)
+                print(resultado)
+
             elif nome == "atirar":
-                print(mundo.atirar(inp.get("direcao", "N")))
+                d = inp.get("direcao", "N")
+                d = d if d in ["N", "S", "L", "O"] else "N"
+                resultado = mundo.atirar(d)
+                print(resultado)
+
             elif nome == "pegar_ouro":
-                print(mundo.pegar_ouro())
+                resultado = mundo.pegar_ouro()
+                print(resultado)
+
             elif nome == "escalar_saida":
-                print(mundo.escalar_saida())
+                resultado = mundo.escalar_saida()
+                print(resultado)
+
+            historico.append({
+                "posicao": mundo.posicao_jogador,
+                "sensores": mundo.sensores(),
+                "acao": nome,
+                "entrada": inp,
+                "resultado": resultado
+            })
 
 
 # ============================================
@@ -207,7 +253,10 @@ def main():
     print("Wumpus:", mundo.posicao_wumpus)
     print("Ouro:", mundo.posicao_ouro)
 
-    agente.executar(mundo, "Encontre o ouro e saia vivo")
+    objetivo = input("Digite o objetivo do agente: ")
+
+    agente.executar(
+        mundo, objetivo)
 
 
 if __name__ == "__main__":
