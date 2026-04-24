@@ -2,11 +2,13 @@ import os
 import json
 import random
 import re
+from dotenv import load_dotenv
 from groq import Groq
 
 # ============================================
 # CONFIG API
 # ============================================
+load_dotenv()
 
 
 def configurar_chave():

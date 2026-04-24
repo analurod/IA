@@ -1,5 +1,4 @@
-# keys
-wumpus_agente/key_api.txt
+# variáveis de ambiente
 .env
 *.env
 
@@ -10,3 +9,6 @@ __pycache__/
 # editor
 .vscode/
 .idea/
+
+# sistema
+.DS_Store
