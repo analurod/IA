@@ -1,3 +1,7 @@
+# ANA LUISA RODRIGUES
+# RENNAN GABRIEL BRITTO
+
+
 import os
 import json
 import random
