@@ -1,0 +1,12 @@
+# keys
+wumpus_agente/key_api.txt
+.env
+*.env
+
+# python
+__pycache__/
+*.pyc
+
+# editor
+.vscode/
+.idea/
