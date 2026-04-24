@@ -6,6 +6,7 @@ import numpy as np
 import random as r
 import heapq
 
+
 class WumpusWorldEnv:
     def __init__(self):
         self.size = 4
@@ -25,7 +26,7 @@ class WumpusWorldEnv:
 
         # posição inicial fixa
         self.player_pos = (3, 0)
-        self.grid[3,0] = "=)"
+        self.grid[3, 0] = "=)"
 
         # distribuição
         self._distribute(3, 1)
@@ -54,7 +55,7 @@ class WumpusWorldEnv:
         x, y = self.player_pos
         percepts = []
 
-        vizinhos = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+        vizinhos = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
 
         for i, j in vizinhos:
             if 0 <= i < 4 and 0 <= j < 4:
@@ -67,18 +68,18 @@ class WumpusWorldEnv:
             percepts.append("Brilho")
 
         # ========================================================
-        #atualiza 
+        # atualiza
         # sem perigo → vizinhos seguros
         if "Brisa" not in percepts and "Cheiro" not in percepts:
             for i, j in vizinhos:
                 if 0 <= i < 4 and 0 <= j < 4:
-                    self.safe_cells.add((i,j))
+                    self.safe_cells.add((i, j))
 
         # possível Wumpus
         if "Cheiro" in percepts:
             for i, j in vizinhos:
                 if 0 <= i < 4 and 0 <= j < 4:
-                    self.possible_wumpus.add((i,j))
+                    self.possible_wumpus.add((i, j))
 
         return percepts
 
@@ -101,13 +102,14 @@ class WumpusWorldEnv:
         self.arrow = False
 
         x, y = self.player_pos
-        dx, dy = {"N":(-1,0),"S":(1,0),"E":(0,1),"W":(0,-1)}[self.direction]
+        dx, dy = {"N": (-1, 0), "S": (1, 0), "E": (0, 1),
+                  "W": (0, -1)}[self.direction]
 
         while 0 <= x < 4 and 0 <= y < 4:
-            if self.grid[x,y] == "W":
+            if self.grid[x, y] == "W":
                 print("Ele gritou! O monstro morreu!")
                 self.wumpus_alive = False
-                self.grid[x,y] = "."
+                self.grid[x, y] = "."
                 self.possible_wumpus.clear()
                 return
             x += dx
@@ -120,7 +122,7 @@ class WumpusWorldEnv:
     # ========================================================
     def _neighbors(self, pos):
         x, y = pos
-        moves = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+        moves = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
 
         valid = []
         for i, j in moves:
@@ -135,13 +137,13 @@ class WumpusWorldEnv:
         fila = []
         heapq.heappush(fila, (0, start))
 
-        g = {start: 0} #custo até lá
+        g = {start: 0}  # custo até lá
         pai = {start: None}
 
         while fila:
             _, atual = heapq.heappop(fila)
 
-            if atual == target: #considera os vizinhos
+            if atual == target:  # considera os vizinhos
                 return self._reconstruir(pai, atual)
 
             for v in self._neighbors(atual):
@@ -215,11 +217,11 @@ class WumpusWorldEnv:
             print("Sem movimentos seguros... assumindo risco!")
 
             x, y = self.player_pos
-            vizinhos = [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+            vizinhos = [(x+1, y), (x-1, y), (x, y+1), (x, y-1)]
 
             risky_moves = [
-                (i,j) for i,j in vizinhos
-                if 0 <= i < 4 and 0 <= j < 4 and (i,j) not in self.visited
+                (i, j) for i, j in vizinhos
+                if 0 <= i < 4 and 0 <= j < 4 and (i, j) not in self.visited
             ]
 
             if risky_moves:
@@ -234,7 +236,7 @@ class WumpusWorldEnv:
         #  VOLTA COM A*
         # ========================================================
         if self.has_gold:
-            path_back = self._find_path(self.player_pos, (3,0))
+            path_back = self._find_path(self.player_pos, (3, 0))
             print("\nCaminho de volta:", path_back)
 
             if path_back:
@@ -242,7 +244,7 @@ class WumpusWorldEnv:
                     self.move_to(step)
                     print("Voltando para:", step)
 
-            if self.player_pos == (3,0):
+            if self.player_pos == (3, 0):
                 print("Saiu com o ouro! Parabéns!")
                 self.score += 1000
 
