@@ -42,7 +42,7 @@ class MundoWumpus:
         s = []
 
         for dx, dy in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-            v = (x+dx, y+dy)
+            v = (x + dx, y + dy)
             if v == self.posicao_wumpus:
                 s.append("FEDOR")
             if v in self.abismos:
@@ -56,8 +56,8 @@ class MundoWumpus:
     def andar(self, d):
         dirs = {"N": (-1, 0), "S": (1, 0), "L": (0, 1), "O": (0, -1)}
         dx, dy = dirs[d]
-        nx = self.posicao_jogador[0]+dx
-        ny = self.posicao_jogador[1]+dy
+        nx = self.posicao_jogador[0] + dx
+        ny = self.posicao_jogador[1] + dy
 
         if not (1 <= nx <= 4 and 1 <= ny <= 4):
             return "Parede"
@@ -113,34 +113,32 @@ class MundoWumpus:
 SYSTEM_PROMPT = """
 Você é um agente do Mundo de Wumpus.
 
-Ações permitidas:
-1) andar
-2) atirar
-3) pegar_ouro
-4) escalar_saida
-
-Direções permitidas:
-"N", "S", "L", "O"
-
-Formato obrigatório:
+Responda APENAS com JSON válido, no formato:
 
 {
-  "action": "andar",
-  "action_input": {
-    "direcao": "S"
-  }
+  "action": "andar | atirar | pegar_ouro | escalar_saida",
+  "action_input": { "direcao": "N | S | L | O" }
 }
 
-Regras:
-- O objetivo do usuário é a prioridade máxima. Não aja aleatoriamente.
-- Antes de escolher uma ação, considere: objetivo, posição atual, sensores e histórico recente.
-- Atire apenas se FEDOR nos sensores.
-- Se houver BRILHO, a próxima ação deve ser pegar_ouro.
-- Se estiver com ouro e estiver em (1,1), a próxima ação deve ser escalar_saida.
-- Se uma direção deu Parede, não tente essa mesma direção de novo na mesma posição.
-- Evite andar para casas desconhecidas quando houver BRISA ou FEDOR, a menos que seja necessário. Utilize o histórico para se locomover.
-- Você tem apenas 1 flecha, ou seja, pode atirar apenas uma vez.
-- Quando você atira uma flecha na direção do Wumpus você machuca e mata o Wumpus.
+Regras principais:
+1. OBJETIVO TEM PRIORIDADE MÁXIMA.
+2. Use o estado atual (posição, sensores) e histórico recente para decidir.
+3. NÃO repita ações inúteis (ex: andar para Parede).
+4. NÃO aja aleatoriamente.
+5. Você tem apenas uma flecha, ao atirar uma vez não tente novamente.
+
+Regras do ambiente:
+- "BRILHO" → usar pegar_ouro
+- "FEDOR" → pode usar atirar (apenas se necessário)
+- "BRISA" → evite risco, verifique seu histórico de passos
+
+Regras de missão:
+- Se pegou o ouro → volte para (1,1) → escalar_saida
+- Não continue explorando após pegar o ouro
+
+Importante:
+- Use SOMENTE "N", "S", "L", "O"
+- Nunca escreva texto fora do JSON
 """
 
 
@@ -154,7 +152,7 @@ class Agente:
         if m:
             json_str = m.group()
 
-            # corrige aspas simples
+            # Corrige aspas simples, caso o modelo erre.
             json_str = json_str.replace("'", '"')
 
             try:
@@ -168,26 +166,30 @@ class Agente:
     def executar(self, mundo, objetivo):
 
         historico = []
+        max_passos = 100
 
-        for i in range(20):
+        for i in range(max_passos):
 
             if not mundo.vivo:
                 print("Game Over")
                 break
 
             estado = f"""
+Passo: {i + 1}/{max_passos}
 Pos: {mundo.posicao_jogador}
 Sensores: {mundo.sensores()}
 Ouro: {mundo.ouro}
 Flecha: {mundo.flecha}
-Historico recente: {historico[-5:]}
+Historico recente: {historico[-8:]}
 """
 
             prompt = f"""
-Objetivo: {objetivo}
+Objetivo principal do usuário: {objetivo}
 
-Estado:
+Estado atual:
 {estado}
+
+Escolha UMA ação que ajude diretamente a cumprir o objetivo.
 """
 
             resp = self.client.chat.completions.create(
@@ -214,29 +216,43 @@ Estado:
                 d = inp.get("direcao", "N")
                 d = d if d in ["N", "S", "L", "O"] else "N"
                 resultado = mundo.andar(d)
-                print(resultado)
 
             elif nome == "atirar":
                 d = inp.get("direcao", "N")
                 d = d if d in ["N", "S", "L", "O"] else "N"
                 resultado = mundo.atirar(d)
-                print(resultado)
 
             elif nome == "pegar_ouro":
                 resultado = mundo.pegar_ouro()
-                print(resultado)
 
             elif nome == "escalar_saida":
                 resultado = mundo.escalar_saida()
-                print(resultado)
+
+            else:
+                resultado = "Acao invalida"
+
+            print(resultado)
 
             historico.append({
+                "passo": i + 1,
                 "posicao": mundo.posicao_jogador,
                 "sensores": mundo.sensores(),
                 "acao": nome,
                 "entrada": inp,
                 "resultado": resultado
             })
+
+            if resultado in [
+                "VITORIA",
+                "Saiu sem ouro",
+                "Morreu para o Wumpus",
+                "Caiu no abismo"
+            ]:
+                print("Fim de jogo")
+                break
+
+        else:
+            print("Fim de jogo: limite de passos atingido")
 
 
 # ============================================
@@ -252,11 +268,11 @@ def main():
     print("DEBUG:")
     print("Wumpus:", mundo.posicao_wumpus)
     print("Ouro:", mundo.posicao_ouro)
+    print("Abismos:", mundo.abismos)
 
     objetivo = input("Digite o objetivo do agente: ")
 
-    agente.executar(
-        mundo, objetivo)
+    agente.executar(mundo, objetivo)
 
 
 if __name__ == "__main__":
